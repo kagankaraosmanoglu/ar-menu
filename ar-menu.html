@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Masa — AR Menü</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink: #241C1A;
+    --paper: #F4ECDD;
+    --plum-deep: #1C1420;
+    --brass: #C79A46;
+    --brass-light: #DCB769;
+    --brass-dark: #9C7530;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--plum-deep);
+    font-family:'Space Grotesk', sans-serif;
+    color:var(--ink);
+  }
+  .app-shell{
+    max-width:480px;
+    margin:0 auto;
+    min-height:100dvh;
+    background:var(--paper);
+    position:relative;
+  }
+
+  /* ---------- Menu screen ---------- */
+  .site-header{ padding:40px 22px 18px; }
+  .brandmark{ display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+  .brandmark svg{ width:34px; height:34px; flex:none; }
+  .wordmark{ font-family:'Fraunces', serif; font-size:26px; font-weight:600; letter-spacing:0.2px; }
+  .tagline{ font-size:14px; line-height:1.55; color:rgba(36,28,26,0.68); max-width:320px; }
+
+  #menu-list{ padding:4px 22px 0; }
+  .dish-card{ display:flex; gap:16px; padding:22px 0; border-bottom:1px solid rgba(36,28,26,0.12); }
+  .dish-frame{ position:relative; width:92px; height:92px; flex:none; }
+  .dish-frame .corner{ position:absolute; width:14px; height:14px; }
+  .dish-frame .corner.tl{ top:-4px; left:-4px; border-top:2px solid var(--brass); border-left:2px solid var(--brass); }
+  .dish-frame .corner.tr{ top:-4px; right:-4px; border-top:2px solid var(--brass); border-right:2px solid var(--brass); }
+  .dish-frame .corner.bl{ bottom:-4px; left:-4px; border-bottom:2px solid var(--brass); border-left:2px solid var(--brass); }
+  .dish-frame .corner.br{ bottom:-4px; right:-4px; border-bottom:2px solid var(--brass); border-right:2px solid var(--brass); }
+  .dish-art{ width:100%; height:100%; }
+  .dish-art svg{ width:100%; height:100%; display:block; }
+
+  .dish-info{ flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; }
+  .dish-info h2{ font-family:'Fraunces', serif; font-size:19px; font-weight:600; margin:0; }
+  .dish-info p{ margin:0; font-size:13.5px; line-height:1.5; color:rgba(36,28,26,0.68); }
+  .dish-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:6px; flex-wrap:wrap; }
+  .price{ font-weight:600; font-size:15px; color:var(--brass-dark); font-variant-numeric:tabular-nums; }
+  .dish-actions{ display:flex; gap:8px; }
+
+  .btn{ font-family:'Space Grotesk', sans-serif; font-size:12.5px; font-weight:600; border-radius:3px; padding:9px 13px; border:1px solid transparent; cursor:pointer; display:inline-flex; align-items:center; gap:6px; background:none; }
+  .btn-primary{ background:var(--brass); color:var(--ink); }
+  .btn-primary:active{ background:var(--brass-dark); }
+  .btn-ghost{ border-color:rgba(36,28,26,0.32); color:var(--ink); }
+  .btn-ghost:active{ border-color:var(--brass-dark); color:var(--brass-dark); }
+
+  .qr-panel{ margin-top:14px; padding-top:14px; border-top:1px dashed rgba(36,28,26,0.32); display:flex; gap:14px; align-items:center; width:100%; }
+  .qr-panel[hidden]{ display:none; }
+  .qr-canvas{ flex:none; padding:6px; background:#fff; border:1px solid rgba(36,28,26,0.15); line-height:0; }
+  .qr-caption{ font-size:12px; line-height:1.5; color:rgba(36,28,26,0.62); }
+
+  .site-footer{ padding:26px 22px 52px; font-size:12px; line-height:1.65; color:rgba(36,28,26,0.55); border-top:1px solid rgba(36,28,26,0.1); margin-top:6px; }
+
+  .btn:focus-visible, .pill-btn:focus-visible, .icon-btn:focus-visible{ outline:2px solid var(--brass-dark); outline-offset:2px; }
+
+  /* ---------- AR screen ---------- */
+  #ar-screen{ position:fixed; inset:0; background:#000; z-index:50; }
+  #ar-screen[hidden]{ display:none; }
+  #ar-stage{ position:absolute; inset:0; overflow:hidden; touch-action:none; }
+  #ar-video{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; background:#000; }
+  #xr-canvas-mount{ position:absolute; inset:0; }
+  #xr-canvas-mount canvas{ position:absolute; inset:0; width:100%!important; height:100%!important; pointer-events:none; }
+
+  .viewfinder{ position:absolute; inset:30px; pointer-events:none; z-index:1; }
+  .viewfinder .corner{ position:absolute; width:26px; height:26px; border-color:var(--paper); filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
+  .viewfinder .tl{ top:0; left:0; border-top:3px solid; border-left:3px solid; }
+  .viewfinder .tr{ top:0; right:0; border-top:3px solid; border-right:3px solid; }
+  .viewfinder .bl{ bottom:0; left:0; border-bottom:3px solid; border-left:3px solid; }
+  .viewfinder .br{ bottom:0; right:0; border-bottom:3px solid; border-right:3px solid; }
+
+  #sticker{ position:absolute; left:50%; top:50%; width:150px; touch-action:none; filter:drop-shadow(0 12px 16px rgba(0,0,0,.5)); z-index:1; }
+  #sticker svg{ width:100%; display:block; }
+
+  #ar-topbar{ position:absolute; top:0; left:0; right:0; z-index:3; display:flex; align-items:center; gap:12px; padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 20px; background:linear-gradient(to bottom, rgba(28,20,32,.8), rgba(28,20,32,0)); }
+  .icon-btn{ width:36px; height:36px; border-radius:50%; flex:none; background:rgba(244,236,221,.15); border:1px solid rgba(244,236,221,.32); color:var(--paper); display:flex; align-items:center; justify-content:center; }
+  .ar-dish-meta{ flex:1; min-width:0; color:var(--paper); }
+  .ar-dish-meta .name{ font-family:'Fraunces', serif; font-size:17px; line-height:1.2; }
+  .ar-dish-meta .price{ font-size:12.5px; opacity:.78; margin-top:2px; }
+
+  #ar-hint{ position:absolute; top:calc(env(safe-area-inset-top,0px) + 78px); left:50%; transform:translateX(-50%); z-index:2; background:rgba(28,20,32,.78); color:var(--paper); font-size:12.5px; padding:9px 15px; border-radius:20px; text-align:center; max-width:82%; transition:opacity .4s ease; }
+  #ar-hint.hide{ opacity:0; pointer-events:none; }
+
+  #ar-error{ position:absolute; top:calc(env(safe-area-inset-top,0px) + 78px); left:16px; right:16px; z-index:4; background:rgba(28,20,32,.94); border-left:3px solid var(--brass); color:var(--paper); font-size:13px; line-height:1.55; padding:13px 15px; border-radius:4px; }
+  #ar-error[hidden]{ display:none; }
+
+  #ar-bottombar{ position:absolute; left:0; right:0; bottom:0; z-index:3; display:flex; gap:10px; justify-content:center; flex-wrap:wrap; padding:16px 16px calc(env(safe-area-inset-bottom,0px) + 18px); background:linear-gradient(to top, rgba(28,20,32,.82), rgba(28,20,32,0)); }
+  .pill-btn{ font-family:'Space Grotesk', sans-serif; font-size:13px; font-weight:600; color:var(--paper); background:rgba(244,236,221,.15); border:1px solid rgba(244,236,221,.34); padding:11px 17px; border-radius:22px; display:inline-flex; align-items:center; gap:8px; }
+  .pill-btn.primary{ background:var(--brass); color:var(--ink); border-color:var(--brass); }
+  #ar-real-btn[hidden]{ display:none; }
+
+  #xr-overlay{ position:fixed; inset:0; z-index:60; pointer-events:none; }
+  #xr-overlay[hidden]{ display:none; }
+  #xr-overlay .xr-hint{ position:absolute; top:calc(env(safe-area-inset-top,0px) + 20px); left:50%; transform:translateX(-50%); background:rgba(28,20,32,.78); color:var(--paper); padding:10px 16px; border-radius:20px; font-size:13px; text-align:center; max-width:80%; }
+  #xr-end-btn{ position:absolute; bottom:calc(env(safe-area-inset-bottom,0px) + 22px); left:50%; transform:translateX(-50%); pointer-events:auto; }
+
+  @media (prefers-reduced-motion: reduce){
+    #ar-hint{ transition:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ============ MENU SCREEN ============ -->
+  <section id="menu-screen">
+    <header class="site-header">
+      <div class="brandmark">
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="20" r="18" stroke="#C79A46" stroke-width="2"/>
+          <circle cx="20" cy="20" r="6.5" stroke="#C79A46" stroke-width="2"/>
+          <line x1="20" y1="4" x2="20" y2="10" stroke="#C79A46" stroke-width="2"/>
+          <line x1="20" y1="30" x2="20" y2="36" stroke="#C79A46" stroke-width="2"/>
+          <line x1="4" y1="20" x2="10" y2="20" stroke="#C79A46" stroke-width="2"/>
+          <line x1="30" y1="20" x2="36" y2="20" stroke="#C79A46" stroke-width="2"/>
+        </svg>
+        <span class="wordmark">Masa</span>
+      </div>
+      <p class="tagline">Sipariş vermeden önce tabağı masana getir. Bir ürünü seç, telefonunla kameranı masaya doğrult.</p>
+    </header>
+
+    <main id="menu-list"></main>
+
+    <footer class="site-footer">
+      Bu bir çalışan prototiptir. Aşağıdaki illüstrasyonlar yer tutucudur — kendi yemek fotoğraflarınızı yükleyin, sizin için gerçek görsellerle güncelleyelim. QR kodların misafirlerin kendi telefonundan taranabilmesi için bu sayfanın bir web adresine (ör. Netlify, GitHub Pages) yüklenmesi gerekir.
+    </footer>
+  </section>
+
+  <!-- ============ AR SCREEN ============ -->
+  <section id="ar-screen" hidden>
+    <div id="ar-stage">
+      <video id="ar-video" playsinline muted autoplay></video>
+      <div id="xr-canvas-mount"></div>
+      <div id="sticker"><div id="sticker-art"></div></div>
+    </div>
+
+    <div class="viewfinder">
+      <span class="corner tl"></span><span class="corner tr"></span>
+      <span class="corner bl"></span><span class="corner br"></span>
+    </div>
+
+    <div id="ar-topbar">
+      <button class="icon-btn" id="ar-back" aria-label="Menüye dön">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13 3L3 13M3 3l10 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+      <div class="ar-dish-meta">
+        <div class="name" id="ar-dish-name">—</div>
+        <div class="price" id="ar-dish-price">—</div>
+      </div>
+    </div>
+
+    <div id="ar-hint">Sürükleyerek masaya yerleştir · iki parmakla boyutlandır</div>
+    <div id="ar-error" hidden></div>
+
+    <div id="ar-bottombar">
+      <button class="pill-btn" id="ar-reset">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M13.5 8A5.5 5.5 0 1 1 11.9 4M13.5 2v4h-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Sıfırla
+      </button>
+      <button class="pill-btn primary" id="ar-real-btn" hidden>
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 1.5l6 3.2v6.6L8 14.5l-6-3.2V4.7L8 1.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M2 4.7L8 8m0 0l6-3.3M8 8v6.5" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+        Gerçek AR'i dene
+      </button>
+    </div>
+  </section>
+
+  <div id="xr-overlay" hidden>
+    <div class="xr-hint">Masayı tara, reticle belirince ekrana dokunarak yerleştir</div>
+    <button class="pill-btn primary" id="xr-end-btn">Bitir</button>
+  </div>
+
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     1) DISH ILLUSTRATIONS (hand-drawn SVG, doubles as AR texture)
+     ============================================================ */
+  function burgerSVG(){
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">'
+      + '<ellipse cx="100" cy="176" rx="74" ry="13" fill="rgba(36,28,26,0.15)"/>'
+      + '<path d="M40,150 Q40,168 100,170 Q160,168 160,150 L160,138 L40,138 Z" fill="#D9995A"/>'
+      + '<rect x="36" y="130" width="128" height="20" rx="9" fill="#6E4429"/>'
+      + '<path d="M30,126 Q45,118 60,126 Q75,134 90,126 Q105,118 120,126 Q135,134 150,126 Q160,121 170,126 L170,134 L30,134 Z" fill="#EAB94C"/>'
+      + '<rect x="40" y="112" width="120" height="14" rx="4" fill="#C1452F"/>'
+      + '<path d="M28,98 Q46,86 64,98 Q82,110 100,98 Q118,86 136,98 Q154,110 172,98 L172,112 Q154,124 136,112 Q118,100 100,112 Q82,124 64,112 Q46,100 28,112 Z" fill="#7FA24A"/>'
+      + '<path d="M38,96 Q38,54 100,54 Q162,54 162,96 Z" fill="#E3A857"/>'
+      + '<circle cx="80" cy="70" r="3" fill="#F6E3B4"/><circle cx="102" cy="64" r="3" fill="#F6E3B4"/>'
+      + '<circle cx="124" cy="72" r="3" fill="#F6E3B4"/><circle cx="112" cy="82" r="3" fill="#F6E3B4"/>'
+      + '<circle cx="90" cy="86" r="3" fill="#F6E3B4"/>'
+      + '</svg>';
+  }
+
+  function pizzaSVG(){
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">'
+      + '<ellipse cx="100" cy="176" rx="76" ry="12" fill="rgba(36,28,26,0.13)"/>'
+      + '<circle cx="100" cy="100" r="82" fill="#E3B15C"/>'
+      + '<circle cx="100" cy="100" r="70" fill="#C1462F"/>'
+      + '<circle cx="100" cy="100" r="63" fill="#D96B48"/>'
+      + '<ellipse cx="72" cy="78" rx="17" ry="13" fill="#F3E6C6"/><ellipse cx="126" cy="70" rx="14" ry="11" fill="#F3E6C6"/>'
+      + '<ellipse cx="140" cy="118" rx="15" ry="12" fill="#F3E6C6"/><ellipse cx="88" cy="132" rx="18" ry="13" fill="#F3E6C6"/>'
+      + '<ellipse cx="60" cy="112" rx="12" ry="10" fill="#F3E6C6"/>'
+      + '<g fill="#4F7942"><ellipse cx="82" cy="95" rx="7" ry="4" transform="rotate(20 82 95)"/><ellipse cx="118" cy="88" rx="7" ry="4" transform="rotate(-15 118 88)"/>'
+      + '<ellipse cx="105" cy="120" rx="7" ry="4" transform="rotate(40 105 120)"/><ellipse cx="130" cy="105" rx="7" ry="4" transform="rotate(-30 130 105)"/>'
+      + '<ellipse cx="70" cy="118" rx="7" ry="4" transform="rotate(10 70 118)"/></g>'
+      + '<g fill="#B5793A" opacity="0.55"><circle cx="45" cy="70" r="4"/><circle cx="152" cy="55" r="3.5"/><circle cx="160" cy="135" r="4"/>'
+      + '<circle cx="55" cy="150" r="3.5"/><circle cx="100" cy="34" r="3.5"/></g>'
+      + '</svg>';
+  }
+
+  function salataSVG(){
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">'
+      + '<ellipse cx="100" cy="178" rx="78" ry="12" fill="rgba(36,28,26,0.13)"/>'
+      + '<path d="M20,95 Q20,165 100,168 Q180,165 180,95 L180,90 L20,90 Z" fill="#C9C1AE"/>'
+      + '<ellipse cx="100" cy="92" rx="80" ry="20" fill="#F3EADD"/>'
+      + '<ellipse cx="100" cy="92" rx="80" ry="20" fill="none" stroke="#24261a" stroke-opacity="0.12" stroke-width="3"/>'
+      + '<g fill="#6F9B4A"><ellipse cx="65" cy="88" rx="16" ry="9" transform="rotate(-10 65 88)"/><ellipse cx="118" cy="80" rx="18" ry="9" transform="rotate(12 118 80)"/>'
+      + '<ellipse cx="145" cy="98" rx="14" ry="8" transform="rotate(-20 145 98)"/><ellipse cx="80" cy="102" rx="15" ry="8" transform="rotate(18 80 102)"/></g>'
+      + '<g fill="#8CB868"><ellipse cx="95" cy="90" rx="13" ry="7" transform="rotate(-6 95 90)"/><ellipse cx="60" cy="102" rx="12" ry="7" transform="rotate(15 60 102)"/></g>'
+      + '<g fill="#C1452F"><circle cx="72" cy="96" r="7"/><circle cx="132" cy="90" r="7"/><circle cx="105" cy="104" r="6.5"/></g>'
+      + '<g fill="#F7EFD9" stroke="#e7dcc0" stroke-width="1"><rect x="86" y="78" width="10" height="10" rx="2"/><rect x="128" y="70" width="9" height="9" rx="2"/><rect x="150" y="88" width="9" height="9" rx="2"/></g>'
+      + '<g fill="#5C4033" opacity="0.85"><ellipse cx="55" cy="80" rx="3.5" ry="2.5"/><ellipse cx="110" cy="72" rx="3.5" ry="2.5"/><ellipse cx="160" cy="104" rx="3.5" ry="2.5"/><ellipse cx="90" cy="106" rx="3.5" ry="2.5"/></g>'
+      + '<path d="M55,68 Q90,58 130,66" stroke="#C79A46" stroke-width="2" fill="none" opacity="0.7"/>'
+      + '</svg>';
+  }
+
+  function sufleSVG(){
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">'
+      + '<ellipse cx="100" cy="182" rx="60" ry="10" fill="rgba(36,28,26,0.13)"/>'
+      + '<path d="M62,120 L138,120 L128,178 L72,178 Z" fill="#9C6B45"/>'
+      + '<path d="M62,120 L138,120 L134,132 L66,132 Z" fill="#8A5B38"/>'
+      + '<ellipse cx="100" cy="120" rx="38" ry="9" fill="#5C3A24"/>'
+      + '<ellipse cx="100" cy="116" rx="34" ry="7.5" fill="#3B2418"/>'
+      + '<path d="M78,116 Q80,140 68,160 Q64,166 70,168 Q80,168 84,150 Q88,132 92,118 Z" fill="#3B2418"/>'
+      + '<path d="M112,117 Q118,134 114,150 Q112,158 118,158 Q124,156 126,142 Q128,128 122,116 Z" fill="#4a2c19"/>'
+      + '<circle cx="86" cy="106" r="2" fill="#F4ECDD" opacity="0.8"/><circle cx="103" cy="102" r="2" fill="#F4ECDD" opacity="0.8"/>'
+      + '<circle cx="112" cy="110" r="2" fill="#F4ECDD" opacity="0.8"/><circle cx="93" cy="112" r="1.6" fill="#F4ECDD" opacity="0.7"/>'
+      + '<path d="M136,150 Q146,146 150,154 Q152,160 146,162 Q138,163 136,156 Z" fill="#8C2F3B"/><circle cx="144" cy="151" r="1.6" fill="#F4ECDD"/>'
+      + '<path d="M70,110 Q66,100 74,96 Q82,94 82,102 Q80,110 70,110 Z" fill="#4F7942"/>'
+      + '</svg>';
+  }
+
+  var MENU_ITEMS = [
+    { id:'burger', name:'Klasik Burger', desc:'Izgara köfte, cheddar, marul, domates, kendi soslarımız.', price:220, svg:burgerSVG() },
+    { id:'pizza',  name:'Margherita', desc:'Odun fırında, taze fesleğen ve bufala mozzarella ile.', price:190, svg:pizzaSVG() },
+    { id:'salata', name:'Akdeniz Salatası', desc:'Karışık yeşillik, domates, kırmızı soğan, beyaz peynir.', price:150, svg:salataSVG() },
+    { id:'sufle',  name:'Çikolatalı Sufle', desc:'Sıcak servis, akışkan iç harç, nane ve orman meyvesi.', price:120, svg:sufleSVG() }
+  ];
+
+  /* ============================================================
+     2) RENDER MENU + QR CODES
+     ============================================================ */
+  function itemURL(id){
+    var base = location.href.split('#')[0];
+    return base + '#item=' + id;
+  }
+
+  function renderMenu(){
+    var list = document.getElementById('menu-list');
+    MENU_ITEMS.forEach(function(item){
+      var card = document.createElement('article');
+      card.className = 'dish-card';
+      card.innerHTML =
+        '<div class="dish-frame">' +
+          '<span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>' +
+          '<div class="dish-art">' + item.svg + '</div>' +
+        '</div>' +
+        '<div class="dish-info">' +
+          '<h2>' + item.name + '</h2>' +
+          '<p>' + item.desc + '</p>' +
+          '<div class="dish-row">' +
+            '<span class="price">' + item.price + '\u20BA</span>' +
+            '<div class="dish-actions">' +
+              '<button class="btn btn-primary" data-ar="' + item.id + '">AR\u2019de gör</button>' +
+              '<button class="btn btn-ghost" data-qr="' + item.id + '">QR kodu</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="qr-panel" id="qr-panel-' + item.id + '" hidden>' +
+            '<div class="qr-canvas" id="qr-canvas-' + item.id + '"></div>' +
+            '<p class="qr-caption">Bu QR\u2019ı yazdırıp masaya bırakın — okutan misafir doğrudan bu ürünün AR görünümüne gider.</p>' +
+          '</div>' +
+        '</div>';
+      list.appendChild(card);
+    });
+
+    MENU_ITEMS.forEach(function(item){
+      var mount = document.getElementById('qr-canvas-' + item.id);
+      if (mount && window.QRCode){
+        new QRCode(mount, {
+          text: itemURL(item.id),
+          width: 108, height: 108,
+          colorDark: '#241C1A', colorLight: '#F4ECDD',
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      }
+    });
+
+    list.addEventListener('click', function(e){
+      var arBtn = e.target.closest('[data-ar]');
+      if (arBtn){ openAR(arBtn.getAttribute('data-ar')); return; }
+      var qrBtn = e.target.closest('[data-qr]');
+      if (qrBtn){
+        var panel = document.getElementById('qr-panel-' + qrBtn.getAttribute('data-qr'));
+        panel.hidden = !panel.hidden;
+      }
+    });
+  }
+
+  /* ============================================================
+     3) AR SCREEN: camera feed + draggable/pinchable sticker
+     ============================================================ */
+  var currentItem = null;
+  var mediaStream = null;
+  var stickerState = { x:0, y:0, scale:1 };
+  var pointers = new Map();
+  var dragOffset = null;
+  var lastPinchDist = null;
+
+  function clamp(v, lo, hi){ return Math.min(hi, Math.max(lo, v)); }
+
+  function applyStickerTransform(){
+    var el = document.getElementById('sticker');
+    el.style.transform = 'translate(-50%,-50%) translate(' + stickerState.x + 'px,' + stickerState.y + 'px) scale(' + stickerState.scale + ')';
+  }
+
+  function resetSticker(){
+    stickerState = { x:0, y:0, scale:1 };
+    pointers.clear();
+    dragOffset = null;
+    lastPinchDist = null;
+    applyStickerTransform();
+  }
+
+  function initStickerGestures(){
+    var el = document.getElementById('sticker');
+    el.addEventListener('pointerdown', function(e){
+      el.setPointerCapture(e.pointerId);
+      pointers.set(e.pointerId, { x:e.clientX, y:e.clientY });
+      if (pointers.size === 1){
+        var p = pointers.values().next().value;
+        dragOffset = { x: p.x - stickerState.x, y: p.y - stickerState.y };
+      } else if (pointers.size === 2){
+        var pts = Array.from(pointers.values());
+        lastPinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      }
+    });
+    el.addEventListener('pointermove', function(e){
+      if (!pointers.has(e.pointerId)) return;
+      pointers.set(e.pointerId, { x:e.clientX, y:e.clientY });
+      if (pointers.size === 1 && dragOffset){
+        var p = pointers.values().next().value;
+        stickerState.x = p.x - dragOffset.x;
+        stickerState.y = p.y - dragOffset.y;
+        applyStickerTransform();
+      } else if (pointers.size === 2){
+        var pts = Array.from(pointers.values());
+        var dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        if (lastPinchDist){
+          stickerState.scale = clamp(stickerState.scale * (dist / lastPinchDist), 0.4, 3);
+        }
+        lastPinchDist = dist;
+        applyStickerTransform();
+      }
+    });
+    function endPointer(e){
+      pointers.delete(e.pointerId);
+      if (pointers.size < 2) lastPinchDist = null;
+      if (pointers.size === 1){
+        var p = pointers.values().next().value;
+        dragOffset = { x: p.x - stickerState.x, y: p.y - stickerState.y };
+      }
+      if (pointers.size === 0) dragOffset = null;
+    }
+    el.addEventListener('pointerup', endPointer);
+    el.addEventListener('pointercancel', endPointer);
+    el.addEventListener('pointerleave', endPointer);
+  }
+
+  function showARError(msg){
+    var err = document.getElementById('ar-error');
+    err.hidden = false;
+    err.textContent = msg;
+  }
+  function hideARError(){
+    var err = document.getElementById('ar-error');
+    err.hidden = true;
+    err.textContent = '';
+  }
+
+  function startCamera(){
+    var video = document.getElementById('ar-video');
+    hideARError();
+    var secure = (location.protocol === 'https:' || location.hostname === 'localhost' || location.protocol === 'file:');
+    if (!secure){
+      showARError('Kamerayı açmak için bu sayfanın https üzerinden yayınlanması gerekiyor.');
+      return Promise.resolve();
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      showARError('Bu tarayıcı kamera erişimini desteklemiyor.');
+      return Promise.resolve();
+    }
+    return navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+      .then(function(stream){
+        mediaStream = stream;
+        video.srcObject = stream;
+        return video.play().catch(function(){});
+      })
+      .catch(function(){
+        showARError('Kameraya erişilemedi. Tarayıcı ayarlarından kamera iznini kontrol edip tekrar deneyin.');
+      });
+  }
+
+  function stopCamera(){
+    if (mediaStream){
+      mediaStream.getTracks().forEach(function(t){ t.stop(); });
+      mediaStream = null;
+    }
+    var video = document.getElementById('ar-video');
+    video.srcObject = null;
+  }
+
+  function openAR(id){
+    var item = MENU_ITEMS.filter(function(i){ return i.id === id; })[0];
+    if (!item) return;
+    currentItem = item;
+
+    document.getElementById('menu-screen').hidden = true;
+    var arScreen = document.getElementById('ar-screen');
+    arScreen.hidden = false;
+
+    document.getElementById('ar-dish-name').textContent = item.name;
+    document.getElementById('ar-dish-price').textContent = item.price + '\u20BA';
+    document.getElementById('sticker-art').innerHTML = item.svg;
+    resetSticker();
+
+    var hint = document.getElementById('ar-hint');
+    hint.classList.remove('hide');
+    clearTimeout(openAR._hintTimer);
+    openAR._hintTimer = setTimeout(function(){ hint.classList.add('hide'); }, 4500);
+
+    startCamera();
+    setupRealARButton(item);
+  }
+
+  function closeAR(){
+    stopCamera();
+    stopXR();
+    document.getElementById('ar-screen').hidden = true;
+    document.getElementById('menu-screen').hidden = false;
+    if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+  }
+
+  /* ============================================================
+     4) HASH ROUTING (so a scanned QR opens straight into AR)
+     ============================================================ */
+  function handleHash(){
+    var m = /item=([\w-]+)/.exec(location.hash);
+    if (m){
+      var item = MENU_ITEMS.filter(function(i){ return i.id === m[1]; })[0];
+      if (item) openAR(item.id);
+    }
+  }
+
+  /* ============================================================
+     5) OPTIONAL UPGRADE: true plane-tracked AR via WebXR hit-test
+        (Chrome on Android with ARCore; gracefully absent elsewhere)
+     ============================================================ */
+  var xrSession = null, renderer3d = null, scene3d = null, camera3d = null;
+  var reticle = null, hitTestSource = null, hitTestSourceRequested = false, placedMesh = null;
+  var THREE_MOD = null;
+
+  function setupRealARButton(item){
+    var btn = document.getElementById('ar-real-btn');
+    btn.hidden = true;
+    if (!('xr' in navigator)){ return; }
+    navigator.xr.isSessionSupported('immersive-ar').then(function(supported){
+      if (!supported) return;
+      btn.hidden = false;
+      btn.onclick = function(){ startXR(item); };
+    }).catch(function(){ /* WebXR check failed — stick to the drag/pinch mode */ });
+  }
+
+  function loadThree(){
+    if (THREE_MOD) return Promise.resolve(THREE_MOD);
+    return Promise.all([ import('three'), import('three/addons/webxr/ARButton.js') ])
+      .then(function(mods){
+        THREE_MOD = { THREE: mods[0], ARButton: mods[1].ARButton };
+        return THREE_MOD;
+      });
+  }
+
+  function initThreeScene(THREE){
+    if (renderer3d) return;
+    renderer3d = new THREE.WebGLRenderer({ alpha:true, antialias:true });
+    renderer3d.setPixelRatio(window.devicePixelRatio);
+    renderer3d.setSize(window.innerWidth, window.innerHeight);
+    renderer3d.xr.enabled = true;
+    renderer3d.domElement.style.pointerEvents = 'none';
+    document.getElementById('xr-canvas-mount').appendChild(renderer3d.domElement);
+
+    scene3d = new THREE.Scene();
+    camera3d = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+
+    scene3d.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.2));
+
+    var ringGeo = new THREE.RingGeometry(0.06, 0.08, 32).rotateX(-Math.PI / 2);
+    var ringMat = new THREE.MeshBasicMaterial({ color: 0xC79A46 });
+    reticle = new THREE.Mesh(ringGeo, ringMat);
+    reticle.matrixAutoUpdate = false;
+    reticle.visible = false;
+    scene3d.add(reticle);
+
+    var controller = renderer3d.xr.getController(0);
+    controller.addEventListener('select', onXRSelect);
+    scene3d.add(controller);
+
+    window.addEventListener('resize', function(){
+      if (!renderer3d) return;
+      camera3d.aspect = window.innerWidth / window.innerHeight;
+      camera3d.updateProjectionMatrix();
+      renderer3d.setSize(window.innerWidth, window.innerHeight);
+    });
+  }
+
+  function svgToDataURL(svgString){
+    var encoded = window.btoa(unescape(encodeURIComponent(svgString)));
+    return 'data:image/svg+xml;base64,' + encoded;
+  }
+
+  function onXRSelect(){
+    if (!reticle || !reticle.visible || !THREE_MOD) return;
+    var THREE = THREE_MOD.THREE;
+    if (!placedMesh){
+      var tex = new THREE.TextureLoader().load(svgToDataURL(currentItem.svg));
+      var geo = new THREE.PlaneGeometry(0.26, 0.26);
+      var mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide });
+      placedMesh = new THREE.Mesh(geo, mat);
+      scene3d.add(placedMesh);
+    }
+    placedMesh.position.setFromMatrixPosition(reticle.matrix);
+    placedMesh.quaternion.setFromRotationMatrix(reticle.matrix);
+    placedMesh.rotateX(-Math.PI / 2);
+    placedMesh.visible = true;
+  }
+
+  function renderXRFrame(timestamp, frame){
+    if (!frame || !renderer3d) return;
+    var referenceSpace = renderer3d.xr.getReferenceSpace();
+    var session = renderer3d.xr.getSession();
+    if (!hitTestSourceRequested){
+      hitTestSourceRequested = true;
+      session.requestReferenceSpace('viewer').then(function(viewerSpace){
+        session.requestHitTestSource({ space: viewerSpace }).then(function(source){
+          hitTestSource = source;
+        });
+      });
+      session.addEventListener('end', function(){
+        hitTestSource = null;
+        hitTestSourceRequested = false;
+      });
+    }
+    if (hitTestSource){
+      var results = frame.getHitTestResults(hitTestSource);
+      if (results.length){
+        var pose = results[0].getPose(referenceSpace);
+        reticle.visible = true;
+        reticle.matrix.fromArray(pose.transform.matrix);
+      } else {
+        reticle.visible = false;
+      }
+    }
+    renderer3d.render(scene3d, camera3d);
+  }
+
+  function startXR(item){
+    loadThree().then(function(mod){
+      initThreeScene(mod.THREE);
+      var overlay = document.getElementById('xr-overlay');
+      overlay.hidden = false;
+      navigator.xr.requestSession('immersive-ar', {
+        requiredFeatures: ['hit-test'],
+        optionalFeatures: ['dom-overlay'],
+        domOverlay: { root: overlay }
+      }).then(function(session){
+        xrSession = session;
+        renderer3d.xr.setReferenceSpaceType('local');
+        renderer3d.xr.setSession(session).then(function(){
+          hitTestSourceRequested = false;
+          hitTestSource = null;
+          placedMesh = null;
+          renderer3d.setAnimationLoop(renderXRFrame);
+        });
+        session.addEventListener('end', onXREnd);
+      }).catch(function(){
+        overlay.hidden = true;
+        showARError('Gerçek AR oturumu başlatılamadı. Sürükle-bırak modunu kullanmaya devam edebilirsiniz.');
+      });
+    }).catch(function(){
+      showARError('Gerçek AR bileşenleri yüklenemedi (internet bağlantısını kontrol edin). Sürükle-bırak modu kullanılabilir.');
+    });
+  }
+
+  function onXREnd(){
+    if (renderer3d) renderer3d.setAnimationLoop(null);
+    document.getElementById('xr-overlay').hidden = true;
+    xrSession = null;
+    hitTestSource = null;
+    hitTestSourceRequested = false;
+    if (placedMesh && scene3d){ scene3d.remove(placedMesh); placedMesh = null; }
+  }
+
+  function stopXR(){
+    if (xrSession){
+      try { xrSession.end(); } catch (e) { /* already ended */ }
+    }
+  }
+
+  /* ============================================================
+     6) WIRE UP + BOOT
+     ============================================================ */
+  document.addEventListener('DOMContentLoaded', function(){
+    renderMenu();
+    initStickerGestures();
+    document.getElementById('ar-back').addEventListener('click', closeAR);
+    document.getElementById('ar-reset').addEventListener('click', resetSticker);
+    document.getElementById('xr-end-btn').addEventListener('click', stopXR);
+    window.addEventListener('hashchange', handleHash);
+    handleHash();
+  });
+})();
+</script>
+</body>
+</html>
